@@ -550,7 +550,7 @@ async def searching_10minutes_job():
                     (lastlv,lvstatus) = getCommunityLiveLastres(str(t[1]))
                     if t[6] < lastlv or t[7] < lvstatus:
                         lives = getCommunityLives(t[1], t[6]+1);
-                        if len(movies) == 0:
+                        if len(lives) == 0:
                             continue
                         with conn.cursor() as cur:
                             cur.execute("UPDATE guilds set lastlv = %s, livestatus = %s where guildId = %s", (str(lives[-1]["id"]),str(lives[-1]["status_i"]), str(t[0])))
