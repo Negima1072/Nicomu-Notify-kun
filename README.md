@@ -4,7 +4,7 @@ DiscordBot "ニコミュ通知くん"
 Herokuを使用しており、利用にはニコニコ動画の会員登録、DiscordBotの利用登録が必要です。
 
 ## Demo
-![ScreenShot01](img/ss1.png)
+![ScreenShot01](img/ss01.png)
 
 ## Requirement
 ```
