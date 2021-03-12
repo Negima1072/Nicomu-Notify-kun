@@ -187,15 +187,14 @@ def liveStatus(t):
     else:               return 3
 
 def getCommunityLiveLastres(communityId):
-    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/contents/lives.json?limit=50&offset=0", headers=headers).json()
-    print(res)
+    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/lives.json?limit=50&offset=0", headers=headers).json()
     if res["meta"]["status"] == 200:
         if len(res["data"]["lives"]) >= 1:
             return (int(res["data"]["lives"][0]["id"][2:]), liveStatus(res["data"]["lives"][0]["status"]))
     return (0, 2)
 
 def getCommunityLives(communityId, _from):
-    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/contents/lives.json?limit=50&offset=0", headers=headers).json()
+    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/lives.json?limit=50&offset=0", headers=headers).json()
     if res["meta"]["status"] == 200:
         if len(res["data"]["lives"]) >= 1:
             lives=[]
