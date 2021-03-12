@@ -180,6 +180,56 @@ def getCommunityMovies(communityId, _from):
             return movies
     return []
 
+def liveStatus(t):
+    if t == "RELEASED": return 0
+    elif t == "ON_AIR": return 1
+    elif t == "ENDED":  return 2
+    else:               return 3
+
+def getCommunityLiveLastres(communityId):
+    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/contents/lives.json?limit=50&offset=0&sort=c&direction=d", headers=headers).json()
+    if res["meta"]["status"] == 200:
+        if len(res["data"]["lives"]) >= 1:
+            return (int(res["data"]["lives"][0]["id"][2:]), liveStatus(res["data"]["lives"][0]["status"]))
+    return (0, 2)
+
+def getCommunityLives(communityId, _from):
+    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/contents/lives.json?limit=50&offset=0&sort=c&direction=d", headers=headers).json()
+    if res["meta"]["status"] == 200:
+        if len(res["data"]["lives"]) >= 1:
+            lives=[]
+            for i in range(len(res["data"]["lives"])):
+                lv = res["data"]["lives"][len(res["data"]["lives"])-i-1]
+                if int(lv["id"][2:]) >= _from:
+                    live={
+                        "id": lv["id"],
+                        "id_i": int(lv["id"][2:]),
+                        "title": lv["title"],
+                        "desc": lv["description"],
+                        "status": lv["status"],
+                        "status_i": liveStatus(lv["status"]),
+                        "url": lv["watch_url"],
+                        "comthumb_url": "https://secure-dcdn.cdn.nimg.jp/comch/community-icon/128x128/"+communityId+".jpg",
+                        "ownername": ses.get("https://api.live2.nicovideo.jp/api/v1/user/nickname?userId="+str(lv["user_id"]), headers=headers).json()["data"]["nickname"],
+                        "ownerid": str(lv["user_id"]),
+                        "start": lv["started_at"],
+                        "timeshift": lv["timeshift"]["enabled"],
+                        "memberonly": lv["features"]["is_member_only"]
+                    }
+                    lives.append(live)
+            return lives
+    return []
+
+def LiveEmbed(lv):
+    d="**lvID** ["+lv["id"]+"]("+lv["url"]+")\n"
+    d+="**投稿者** "+lv["ownername"]+"\n"
+    d+="**開始時刻** "+datetime.datetime.strptime(lv["started_at"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
+    if lv["status_i"] == 2: d+="**開始時刻** "+datetime.datetime.strptime(lv["finished_at"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
+    embed = discord.Embed(title=lv["title"],description=d)
+    embed.set_author(name=("新しい生放送が予約されました" if lv["status_i"] == 0 else "新しい生放送が開始されました" if lv["status_i"] == 1 else "生放送が終了しました"))
+    embed.set_thumbnail(url=lv["comthumb_url"])
+    return embed
+
 def CommentEmbed(comment):
     d="**No."+str(comment["no"])+"** ： **"+comment["name"]+"**("+comment["id"]+")"
     embed = discord.Embed(description=d+"\n"+comment["text"])
@@ -324,8 +374,9 @@ async def on_message(mes):
                                     await mes.guild.get_channel(int(channelId)).send(embed=communityEmbed(str(communityId)))
                                     lastres = getCommunityBBSLastres(str(communityId))
                                     lastmv = getCommunityMovieLastres(str(communityId))
+                                    (lastlv,lvstatus) = getCommunityLiveLastres(str(communityId))
                                     with conn.cursor() as cur:
-                                        cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s where guildId = %s", (str(lastres),str(lastmv),str(mes.guild.id)))
+                                        cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s, lastlv = %s, livestatus = %s where guildId = %s", (str(lastres),str(lastmv),str(lastlv),str(lvstatus),str(mes.guild.id)))
                                     conn.commit()
                                     return
                                 elif cres["meta"]["status"] == 403:
@@ -353,8 +404,9 @@ async def on_message(mes):
                                                         await mes.guild.get_channel(int(channelId)).send(embed=communityEmbed(str(communityId)))
                                                         lastres = getCommunityBBSLastres(str(communityId))
                                                         lastmv = getCommunityMovieLastres(str(communityId))
+                                                        (lastlv,lvstatus) = getCommunityLiveLastres(str(t[1]))
                                                         with conn.cursor() as cur:
-                                                            cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s where guildId = %s", (str(lastres),str(lastmv),str(mes.guild.id)))
+                                                            cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s, lastlv = %s, livestatus = %s where guildId = %s", (str(lastres),str(lastmv),str(lastlv),str(lvstatus),str(mes.guild.id)))
                                                         conn.commit()
                                                         return
                                         if isMember == 0:
@@ -363,8 +415,9 @@ async def on_message(mes):
                                             await mes.guild.get_channel(int(channelId)).send(embed=communityEmbed(str(communityId)))
                                             lastres = getCommunityBBSLastres(str(communityId))
                                             lastmv = getCommunityMovieLastres(str(communityId))
+                                            (lastlv,lvstatus) = getCommunityLiveLastres(str(communityId))
                                             with conn.cursor() as cur:
-                                                cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s where guildId = %s", (str(lastres),str(lastmv),str(mes.guild.id)))
+                                                cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s, lastlv = %s, livestatus = %s where guildId = %s", (str(lastres),str(lastmv),str(lastlv),str(lvstatus),str(mes.guild.id)))
                                             conn.commit()
                                             return
                                         await mes.channel.send("お使いのコミュニティーがプライベートコミュニティーのためコミュニティーを通知取得用のニコニコアカウントがフォロー申請を送信しています。受理してください。")
@@ -379,8 +432,9 @@ async def on_message(mes):
                                     await mes.guild.get_channel(int(channelId)).send(embed=communityEmbed(str(communityId)))
                                     lastres = getCommunityBBSLastres(str(communityId))
                                     lastmv = getCommunityMovieLastres(str(communityId))
+                                    (lastlv,lvstatus) = getCommunityLiveLastres(str(communityId))
                                     with conn.cursor() as cur:
-                                        cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s where guildId = %s", (str(lastres),str(lastmv),str(mes.guild.id)))
+                                        cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s, lastlv = %s, livestatus = %s where guildId = %s", (str(lastres),str(lastmv),str(lastlv),str(lvstatus),str(mes.guild.id)))
                                     conn.commit()
                                     return
                                 else:
@@ -401,7 +455,7 @@ async def on_message(mes):
 @tasks.loop(seconds=300)
 async def searching_10minutes_job():
     #flag ga 1ijyouno sanka kakunin
-    print("Job task")
+    print("Job task:"+str(datetime.datetime.now()))
     with psycopg2.connect(DATABASE_URL) as conn:
         with conn.cursor() as cur:
             #メンバーか
@@ -430,9 +484,9 @@ async def searching_10minutes_job():
                                 await ch.send("**Congratulations！これで設定は完了です。**")
                                 await ch.send(embed=communityEmbed(str(t[1])))
                                 lastres = getCommunityBBSLastres(str(t[1]))
-                                lastmv = getCommunityMovieLastres(str(communityId))
+                                lastmv = getCommunityMovieLastres(str(t[1]))
                                 with conn.cursor() as cur:
-                                    cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s where guildId = %s", (str(lastres),str(lastmv),str(mes.guild.id)))
+                                    cur.execute("UPDATE guilds set isMember = 1, lastres = %s, lastmv = %s where guildId = %s", (str(lastres),str(lastmv),str(t[0])))
                                 conn.commit()
                                 continue
                         elif res["data"]["follow_request"]["status"] == "reject":
@@ -490,6 +544,23 @@ async def searching_10minutes_job():
                         continue
                     continue
                 time.sleep(0.1)
+            #あたらしい生放送
+            for t in ts:
+                if t[4] == 1:
+                    (lastlv,lvstatus) = getCommunityLiveLastres(str(t[1]))
+                    if t[6] < lastlv or t[7] < lvstatus:
+                        lives = getCommunityLives(t[1], t[6]+1);
+                        if len(movies) == 0:
+                            continue
+                        with conn.cursor() as cur:
+                            cur.execute("UPDATE guilds set lastlv = %s, livestatus = %s where guildId = %s", (str(lives[-1]["id"]),str(lives[-1]["status_i"]), str(t[0])))
+                        conn.commit()
+                        guild=client.get_guild(t[0])
+                        ch=guild.get_channel(t[2])
+                        for m in lives:
+                            await ch.send(embed=LiveEmbed(m))
+                        continue
+                    continue
     return
 
 client.run(ACCESS_TOKEN)
