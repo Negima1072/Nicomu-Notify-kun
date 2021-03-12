@@ -1,0 +1,1 @@
+discordbot: python nicomu_notify.py
