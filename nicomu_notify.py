@@ -216,6 +216,7 @@ def getCommunityLives(communityId, _from):
                         "timeshift": lv["timeshift"]["enabled"],
                         "memberonly": lv["features"]["is_member_only"]
                     }
+                    if "finished_at" in lv: live["finished"] = lv["finished_at"]
                     lives.append(live)
             return lives
     return []
@@ -223,8 +224,8 @@ def getCommunityLives(communityId, _from):
 def LiveEmbed(lv):
     d="**lvID** ["+lv["id"]+"]("+lv["url"]+")\n"
     d+="**投稿者** "+lv["ownername"]+"\n"
-    d+="**開始時刻** "+datetime.datetime.strptime(lv["started_at"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
-    if lv["status_i"] == 2: d+="**開始時刻** "+datetime.datetime.strptime(lv["finished_at"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
+    d+="**開始時刻** "+datetime.datetime.strptime(lv["started"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
+    if lv["status_i"] == 2: d+="**終了時刻** "+datetime.datetime.strptime(lv["finished"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
     embed = discord.Embed(title=lv["title"],description=d)
     embed.set_author(name=("新しい生放送が予約されました" if lv["status_i"] == 0 else "新しい生放送が開始されました" if lv["status_i"] == 1 else "生放送が終了しました"))
     embed.set_thumbnail(url=lv["comthumb_url"])
