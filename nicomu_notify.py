@@ -1,6 +1,9 @@
 import discord, requests, os, random, datetime, sys, psycopg2, urllib, json, time, re
 from bs4 import BeautifulSoup
 from discord.ext import tasks
+from dotenv import load_dotenv
+
+load_dotenv(".env")
 
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 NICO_EMAIL = os.environ.get('NICO_EMAIL')
@@ -21,7 +24,10 @@ if res.headers["x-niconico-authflag"]==0:
     sys.exit(1)
 
 inv_mes = """招待ありがとうございます。`-nn setup`でセットアップができます。また`-nn help`でヘルプメッセージを表示できます。
-Thank you for the invitation. You can set it up with `-nn setup`. You can also use `-nn help` to display help messages."""
+Thank you for the invitation. You can set it up with `-nn setup`. You can also use `-nn help` to display help messages.
+以下の利用規約に目を通した上でご利用ください。
+Please read through the following terms of use before using the site.
+https://github.com/Negima1072/Nicomu-Notify-kun/blob/main/termsofuse.md"""
 
 help_mes_ja = """**-nn setup**
 質問形式でこのBotのセットアップをします。
@@ -121,13 +127,16 @@ def getCommunityBBSComments(communityId, _from):
                 for m in bodys[i].select("iframe"):
                     m.replace_with("")
                 bodyt = bodys[i].text.strip()
+                n = [len(re.findall(r">>sm\d{1,10}", bodyt)) ,len(re.findall(">>co\d{1,10}", bodyt))]
                 while True:
-                    if len(re.findall(">>sm\d{1,10}", bodyt)) > 0:
+                    if n[0] > 0:
                         smid = re.findall(">>sm\d{1,10}", bodyt)[0]
-                        bodyt=bodyt.replace(smid, "["+smid+"](https://www.nicovideo.jp/watch/"+smid[2:])
-                    elif len(re.findall(">>co\d{1,10}", bodyt)) > 0:
+                        bodyt=bodyt.replace(smid, "["+smid+"](https://www.nicovideo.jp/watch/"+smid[2:]+")")
+                        n[0]-=1
+                    elif n[1] > 0:
                         smid = re.findall(">>co\d{1,10}", bodyt)[0]
-                        bodyt=bodyt.replace(smid, "["+smid+"](https://com.nicovideo.jp/community/"+smid[2:])
+                        bodyt=bodyt.replace(smid, "["+smid+"](https://com.nicovideo.jp/community/"+smid[2:]+")")
+                        n[1]-=1
                     else:
                         break
                 comment = {
@@ -160,7 +169,8 @@ def getCommunityMovies(communityId, _from):
                 if mv["id"] >= _from:
                     res2=ses.get("https://www.nicovideo.jp/watch/"+mv["content_id"], headers=headers)
                     soup=BeautifulSoup(res2.text, "html.parser")
-                    a=json.loads(soup.find_all("div", attrs={"id": "js-initial-watch-data"})[0].get("data-api-data"))
+                    res3=soup.find("div", attrs={"id": "js-initial-watch-data"}).get("data-api-data")
+                    a=json.loads(res3)
                     movie={
                         "id": mv["id"],
                         "smid": mv["content_id"],
@@ -172,10 +182,14 @@ def getCommunityMovies(communityId, _from):
                         "view": mv["cached_view_count"],
                         "comment": mv["cached_comment_count"],
                         "mylist": mv["cached_mylist_count"],
-                        "ownerid": str(a["owner"]["id"]),
-                        "ownername": a["owner"]["nickname"],
                         "adderid": str(mv["user_id"])
                     }
+                    if "owner" in a.keys() and a["owner"] != None:
+                        movie["ownerid"] = str(a["owner"]["id"])
+                        movie["ownername"] = str(a["owner"]["nickname"])
+                    else:
+                        movie["ownerid"] = "-"
+                        movie["ownername"] = "-"
                     movies.append(movie)
             return movies
     return []
@@ -212,7 +226,7 @@ def getCommunityLives(communityId, _from):
                         "comthumb_url": "https://secure-dcdn.cdn.nimg.jp/comch/community-icon/128x128/"+communityId+".jpg",
                         "ownername": ses.get("https://api.live2.nicovideo.jp/api/v1/user/nickname?userId="+str(lv["user_id"]), headers=headers).json()["data"]["nickname"],
                         "ownerid": str(lv["user_id"]),
-                        "start": lv["started_at"],
+                        "started": lv["started_at"],
                         "timeshift": lv["timeshift"]["enabled"],
                         "memberonly": lv["features"]["is_member_only"]
                     }
@@ -222,9 +236,9 @@ def getCommunityLives(communityId, _from):
     return []
 
 def LiveEmbed(lv):
-    d="**lvID** ["+lv["id"]+"]("+lv["url"]+")\n"
-    d+="**投稿者** "+lv["ownername"]+"\n"
-    d+="**開始時刻** "+datetime.datetime.strptime(lv["started"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
+    d="**lvID**　["+lv["id"]+"]("+lv["url"]+")\n"
+    d+="**投稿者**　["+lv["ownername"]+"](https://www.nicovideo.jp/user/"+lv["ownerid"]+")\n"
+    d+="**開始時刻**　"+datetime.datetime.strptime(lv["started"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
     if lv["status_i"] == 2: d+="**終了時刻** "+datetime.datetime.strptime(lv["finished"], '%Y-%m-%dT%H:%M:%S%z').strftime("%Y年%m月%d日 %H時%M分")+"\n"
     embed = discord.Embed(title=lv["title"],description=d)
     embed.set_author(name=("新しい生放送が予約されました" if lv["status_i"] == 0 else "新しい生放送が開始されました" if lv["status_i"] == 1 else "生放送が終了しました"))
@@ -239,11 +253,11 @@ def CommentEmbed(comment):
     return embed
 
 def MovieEmbed(movie):
-    d="**smID** ["+movie["smid"]+"]("+movie["smurl"]+")\n"
-    d+="**投稿者** "+movie["ownername"]+"\n"
-    d+="**再生数** "+str(movie["view"])+"\n"
-    d+="**コメント数** "+str(movie["comment"])+"\n"
-    d+="**マイリスト数** "+str(movie["mylist"])+"\n"
+    d="**smID**　["+movie["smid"]+"]("+movie["smurl"]+")\n"
+    d+="**投稿者**　["+movie["ownername"]+"](https://www.nicovideo.jp/user/"+movie["ownerid"]+")\n"
+    d+="**再生数**　"+str(movie["view"])+"\n"
+    d+="**コメント数**　"+str(movie["comment"])+"\n"
+    d+="**マイリスト数**　"+str(movie["mylist"])+"\n"
     embed = discord.Embed(title=movie["title"],description=d)
     embed.set_author(name="新しい動画が登録されました")
     embed.set_footer(text="Added by "+ses.get("https://api.live2.nicovideo.jp/api/v1/user/nickname?userId="+movie["adderid"]).json()["data"]["nickname"])
@@ -452,7 +466,7 @@ async def on_message(mes):
             await mes.channel.send("Something occurred error. **["+str(errorno)+"]**")
             return
 
-##Todo: 　15分単位でページを取得
+##Todo: 　10分単位でページを取得
 @tasks.loop(seconds=300)
 async def searching_10minutes_job():
     #flag ga 1ijyouno sanka kakunin
@@ -548,8 +562,8 @@ async def searching_10minutes_job():
             #あたらしい生放送
             for t in ts:
                 if t[4] == 1:
-                    (lastlv,lvstatus) = getCommunityLiveLastres(str(t[1]))
-                    if t[6] < lastlv or t[7] < lvstatus:
+                    (lastlv,lvstatus,) = getCommunityLiveLastres(str(t[1]))
+                    if t[6] < lastlv:
                         lives = getCommunityLives(t[1], t[6]+1);
                         if len(lives) == 0:
                             continue
@@ -561,7 +575,20 @@ async def searching_10minutes_job():
                         for m in lives:
                             await ch.send(embed=LiveEmbed(m))
                         continue
+                    elif t[7] < lvstatus:
+                        lives = getCommunityLives(t[1], t[6]);
+                        if len(lives) == 0:
+                            continue
+                        with conn.cursor() as cur:
+                            cur.execute("UPDATE guilds set lastlv = %s, livestatus = %s where guildId = %s", (str(lives[-1]["id"][2:]),str(lives[-1]["status_i"]), str(t[0])))
+                        conn.commit()
+                        guild=client.get_guild(t[0])
+                        ch=guild.get_channel(t[2])
+                        for m in lives:
+                            await ch.send(embed=LiveEmbed(m))
+                        continue
                     continue
+            print("Finished"+str(datetime.datetime.now()))
     return
 
 client.run(ACCESS_TOKEN)
