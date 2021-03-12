@@ -553,7 +553,7 @@ async def searching_10minutes_job():
                         if len(lives) == 0:
                             continue
                         with conn.cursor() as cur:
-                            cur.execute("UPDATE guilds set lastlv = %s, livestatus = %s where guildId = %s", (str(lives[-1]["id"]),str(lives[-1]["status_i"]), str(t[0])))
+                            cur.execute("UPDATE guilds set lastlv = %s, livestatus = %s where guildId = %s", (str(lives[-1]["id"][2:]),str(lives[-1]["status_i"]), str(t[0])))
                         conn.commit()
                         guild=client.get_guild(t[0])
                         ch=guild.get_channel(t[2])
