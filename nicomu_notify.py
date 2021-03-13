@@ -463,6 +463,13 @@ async def on_message(mes):
             await mes.channel.send("Something occurred error. **["+str(errorno)+"]**")
             return
 
+@client.event
+async def on_guild_remove(guild):
+     with psycopg2.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE from guilds where guildId = %s", (str(guild.id),))
+        conn.commit()
+
 ##Todo: 　10分単位でページを取得
 @tasks.loop(seconds=300)
 async def searching_10minutes_job():
