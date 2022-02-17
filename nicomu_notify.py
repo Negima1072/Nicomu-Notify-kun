@@ -379,7 +379,7 @@ async def on_message(mes):
                                 headercomm["X-Requested-By"] = "https://com.nicovideo.jp/motion/"+communityId
                                 headercomm["Accept"] = "application/json, text/plain, */*"
                                 headercomm['Content-type']= 'application/json;charset=utf-8'
-                                cres=ses.post("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/follows.json", headers=headers).json()
+                                cres=ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/follows.json", headers=headers).json()
                                 if cres["meta"]["status"] == 409:
                                     await mes.channel.send("すでに通知取得用のニコニコアカウントがすでにコミュニティーをフォローしていたようです。掲示板に新しいメッセージが来たら通知されるでしょう。")
                                     await mes.channel.send("**Congratulations！これで設定は完了です。**")
