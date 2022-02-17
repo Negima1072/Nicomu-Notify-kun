@@ -5,9 +5,6 @@ import discord, requests, os, random, datetime, sys, psycopg2, urllib, json, tim
 from bs4 import BeautifulSoup
 from discord.ext import tasks
 
-from dotenv import load_dotenv
-load_dotenv()
-
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 NICO_EMAIL = os.environ.get('NICO_EMAIL')
 NICO_PASSWD = os.environ.get('NICO_PASSWD')
