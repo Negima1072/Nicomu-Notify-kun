@@ -2,8 +2,6 @@ import discord, requests, os, random, datetime, sys, psycopg2, urllib, json, tim
 from bs4 import BeautifulSoup
 from discord.ext import tasks
 
-//ログイン期限切れ　再ログインしよう
-
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 NICO_EMAIL = os.environ.get('NICO_EMAIL')
 NICO_PASSWD = os.environ.get('NICO_PASSWD')
