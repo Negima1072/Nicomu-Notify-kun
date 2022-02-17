@@ -1,6 +1,12 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
 import discord, requests, os, random, datetime, sys, psycopg2, urllib, json, time, re
 from bs4 import BeautifulSoup
 from discord.ext import tasks
+
+from dotenv import load_dotenv
+load_dotenv()
 
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 NICO_EMAIL = os.environ.get('NICO_EMAIL')
@@ -379,7 +385,7 @@ async def on_message(mes):
                                 headercomm["X-Requested-By"] = "https://com.nicovideo.jp/motion/"+communityId
                                 headercomm["Accept"] = "application/json, text/plain, */*"
                                 headercomm['Content-type']= 'application/json;charset=utf-8'
-                                cres=ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/follows.json", headers=headers).json()
+                                cres=ses.post("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/follows.json", headers=headercomm).json()
                                 if cres["meta"]["status"] == 409:
                                     await mes.channel.send("すでに通知取得用のニコニコアカウントがすでにコミュニティーをフォローしていたようです。掲示板に新しいメッセージが来たら通知されるでしょう。")
                                     await mes.channel.send("**Congratulations！これで設定は完了です。**")
@@ -392,7 +398,7 @@ async def on_message(mes):
                                     conn.commit()
                                     return
                                 elif cres["meta"]["status"] == 403:
-                                    cres = ses.get("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/follows/requests.json", headers=headercomm, data=json.dumps({"title":"DiscordBotのニコミュ通知くんです！","comment":"利用を開始するにはフォローリクエストを承認してください！","notify":False})).json()
+                                    cres = ses.post("https://com.nicovideo.jp/api/v1/communities/"+communityId[2:]+"/follows/requests.json", headers=headercomm, data=json.dumps({"title":"DiscordBotのニコミュ通知くんです！","comment":"利用を開始するにはフォローリクエストを承認してください！","notify":False})).json()
                                     if cres["meta"]["status"] == 200:
                                         await mes.channel.send("お使いのコミュニティーがプライベートコミュニティーのためコミュニティーを通知取得用のニコニコアカウントがフォロー申請を送信しました。受理してください。\nhttps://com.nicovideo.jp/group_contact/"+communityId+"/"+str(cres["data"]["id"]))
                                         with conn.cursor() as cur:
