@@ -485,16 +485,16 @@ async def searching_10minutes_job():
             ts = cur.fetchall()
             for t in ts:
                 if t[4] == 1:
-                    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+t[1][2:]+"/authority.json", headers=headers).json()
+                    res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+t[1][2:]+"/authority.json", headers=headers)
                     if res.headers["x-niconico-authflag"] == 0:
                         resx = ses.post("https://account.nicovideo.jp/api/v1/login", params={"mail_tel":NICO_EMAIL, "password":NICO_PASSWD}, headers={"Content-Type":"x-www-form-urlencoded"})
                         if resx.headers["x-niconico-authflag"]==0:
                             print("Error: Failed Niconico Login")
                             sys.exit(1)
                         else:
-                            res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+t[1][2:]+"/authority.json", headers=headers).json()
-                    if res["meta"]["status"] == 200:
-                        if not res["data"]["is_member"]:
+                            res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+t[1][2:]+"/authority.json", headers=headers)
+                    if res.json()["meta"]["status"] == 200:
+                        if not res.json()["data"]["is_member"]:
                             #Join
                             guild=client.get_guild(t[0])
                             ch=guild.get_channel(t[2])
