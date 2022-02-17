@@ -5,6 +5,9 @@ import discord, requests, os, random, datetime, sys, psycopg2, urllib, json, tim
 from bs4 import BeautifulSoup
 from discord.ext import tasks
 
+from dotenv import load_dotenv
+load_dotenv()
+
 ACCESS_TOKEN = os.environ.get('ACCESS_TOKEN')
 NICO_EMAIL = os.environ.get('NICO_EMAIL')
 NICO_PASSWD = os.environ.get('NICO_PASSWD')
@@ -473,7 +476,7 @@ async def on_guild_remove(guild):
             cur.execute("DELETE from guilds where guildId = %s", (str(guild.id),))
         conn.commit()
 
-##Todo: 　10分単位でページを取得
+##Todo: 　5分単位でページを取得
 @tasks.loop(seconds=300)
 async def searching_10minutes_job():
     #flag ga 1ijyouno sanka kakunin
@@ -486,6 +489,13 @@ async def searching_10minutes_job():
             for t in ts:
                 if t[4] == 1:
                     res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+t[1][2:]+"/authority.json", headers=headers).json()
+                    if res.headers["x-niconico-authflag"] == 0:
+                        resx = ses.post("https://account.nicovideo.jp/api/v1/login", params={"mail_tel":NICO_EMAIL, "password":NICO_PASSWD}, headers={"Content-Type":"x-www-form-urlencoded"})
+                        if resx.headers["x-niconico-authflag"]==0:
+                            print("Error: Failed Niconico Login")
+                            sys.exit(1)
+                        else:
+                            res = ses.get("https://com.nicovideo.jp/api/v1/communities/"+t[1][2:]+"/authority.json", headers=headers).json()
                     if res["meta"]["status"] == 200:
                         if not res["data"]["is_member"]:
                             #Join
